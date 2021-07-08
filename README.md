@@ -6,7 +6,9 @@ All of these commands are not case sensitive.
 
 #### General commands:
 -> `progress`: Shows a simple progress bar.
+
 -> `status`: Shows a quick summary of what is happening.
+
 -> `help`: Sends the link to this file.
 #### Playing music:
 Simply type `play \path\here` to play music.
