@@ -9,7 +9,7 @@ from prompt_toolkit import HTML
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit import PromptSession
 
-completer = WordCompleter(['play', 'exit', 'resume', 'pause', 'stop', 'progress', 'restart'], ignore_case=True)
+completer = WordCompleter(['play', 'exit', 'resume', 'pause', 'stop', 'clear', 'restart', 'length', 'vol', 'setvol', 'progress', 'status'], ignore_case=True)
 
 session = PromptSession(completer=completer)
 
@@ -50,6 +50,10 @@ class MP3Player:
 class Terminal:
     def __init__(self) -> None:
         self.player = None
+        self.help = '''
+        
+        
+        '''
         self.playing = False
         self.paused = False
         self.volume = 1.0 
@@ -60,15 +64,22 @@ class Terminal:
             'pause': self.pause,
             'stop': self.stop,
             'restart': self.restart,
-            #'progress': self.progress,
+            'progress': self.progress,
             'clear': self.clear,
             'length': self.length,
             'vol': self.vol,
-            'set_vol': self.set_volume
+            'setvol': self.set_volume,
+            'status': self.status
         }
     
     def clear(self):
         clear()
+
+    def status(self):
+        if self.playing:
+            return f"Playing: {self.player.file}, Paused: {self.paused}\n{self.progress()}"
+        else:
+            return "Not playing anything."
 
     def toolbar_string(self):
         return f'''<b>[play]</b> play <b>[stop]</b> stop  <b>[pause]</b> pause <b>[exit]</b> exit <b>[resume]</b> resume <b>[clear]</b> clear <b>|</b> volume: {int(self.volume*100)}%'''
@@ -144,24 +155,36 @@ class Terminal:
     
     def set_volume(self, volume):
         volume = volume.replace("%", '')
-        if int(volume) > 100:
+        if int(float(volume)) > 100:
             return "You need a value smaller or equal than 100%."
         else:
-            self.volume = int(volume)/100
+            self.volume = int(float(volume))/100
             pygame.mixer.music.set_volume(self.volume)
             return f"Set volume to {100*self.volume}"
 
-    def parse(self, input):
+    def progress(self):
+        if self.playing:
+            progressBar = ['-' for x in range(50)]
+            length = self.player.get_music_length()
+            pos = self.player.get_pos() // 1000
+            ratio = round(pos/length * 50)
+            for x in range(ratio):
+                progressBar[x] = "█"
+            return f"\n|{''.join(progressBar)}| {pos}/{length} seconds, {length-pos} sec ETA\n"
+        else:
+            return "You are not playing anything."
+
+    def parse(self, inp):
         
-        inWords = input.split()
+        inWords = inp.split()
         if not inWords:
             return " "
-
+        commas = [inWords.index(x) for x in [x for x in inWords if '"' in x]]
         if len(inWords) > 2:
-            inWords = [inWords[0], [inWords[x] for x in range(2, len(inWords))]]
+            inWords = [inWords[0], " ".join([inWords[x] for x in range(commas[0], commas[1]+1)])]
 
         inWords[0] = inWords[0].lower()
-        keywords = ['play', 'exit', 'resume', 'pause', 'stop', 'clear', 'restart', 'length', 'vol', 'set_vol']
+        keywords = ['play', 'exit', 'resume', 'pause', 'stop', 'clear', 'restart', 'length', 'vol', 'setvol', 'progress', 'status']
 
         if inWords[0] in keywords:
             if len(inWords) == 1:
@@ -172,20 +195,17 @@ class Terminal:
                         result = self.functions[inWords[0]]()
                         return result
                     except:
-                        return f"Invalid Syntax: {input}"
+                        return f"Invalid Syntax: {inp}"
             else:
                 try:
                     result = self.functions[inWords[0]](inWords[1])
                     return result
                 except:
-                    return f"Invalid Syntax: {input}: oof"
+                    return f"Invalid Syntax: {inp}"
             
         else:
-            return f"Invalid Syntax: {input}: Not a valid keyword."
+            return f"Invalid Syntax: {inp}: Not a valid keyword."
 
-
-
-# Create custom key bindings first.
 kb = KeyBindings()
 terminal = Terminal()
 
@@ -204,12 +224,23 @@ def _(*args):
 def _(*args):
     terminal.restart()
 
+@kb.add('c-up')
+def _(*args):
+    terminal.set_volume(str(terminal.volume*100 + 10))
+
+@kb.add('c-down')
+def _(*args):
+    terminal.set_volume(str(terminal.volume*100 - 10))
+
 while True:
     try:
         inp = session.prompt("\n❯ ", bottom_toolbar=HTML(terminal.toolbar_string()), key_bindings=kb)
         output = terminal.parse(inp)
         output = [output if output is not None else " "][0]
         print(output)
-    except:
+    except (KeyboardInterrupt, EOFError):
         print("\nThanks For Using!")
+        sys.exit()
+    except:
+        print("There was an error.")
         sys.exit()
