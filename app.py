@@ -150,11 +150,10 @@ terminal = Terminal()
 
 @kb.add('c-u')
 def _(*args):
-    terminal.pause()
-
-@kb.add('c-z')
-def _(*args):
-    terminal.resume()
+    if terminal.paused == True:
+        terminal.resume()
+    else:
+        terminal.pause()
 
 @kb.add('c-x')
 def _(*args):
