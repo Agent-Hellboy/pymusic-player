@@ -50,10 +50,7 @@ class MP3Player:
 class Terminal:
     def __init__(self) -> None:
         self.player = None
-        self.help = '''
-        
-        
-        '''
+        self.help = lambda a: return 'https://github.com/TheLegendBeacon/pymusic-player/blob/253815c1daf6e8b2eed5751e7fd653df4825ed35/README.md'
         self.playing = False
         self.paused = False
         self.volume = 1.0 
@@ -69,7 +66,8 @@ class Terminal:
             'length': self.length,
             'vol': self.vol,
             'setvol': self.set_volume,
-            'status': self.status
+            'status': self.status,
+            'help': self.help
         }
     
     def clear(self):
@@ -184,7 +182,7 @@ class Terminal:
             inWords = [inWords[0], " ".join([inWords[x] for x in range(commas[0], commas[1]+1)])]
 
         inWords[0] = inWords[0].lower()
-        keywords = ['play', 'exit', 'resume', 'pause', 'stop', 'clear', 'restart', 'length', 'vol', 'setvol', 'progress', 'status']
+        keywords = ['play', 'exit', 'resume', 'pause', 'stop', 'clear', 'restart', 'length', 'vol', 'setvol', 'progress', 'status', 'help']
 
         if inWords[0] in keywords:
             if len(inWords) == 1:
