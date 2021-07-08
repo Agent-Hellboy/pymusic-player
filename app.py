@@ -1,4 +1,6 @@
-from os import system, name, path
+from os import system, name, path, environ
+environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
+
 import sys
 import pygame 
 from mutagen.mp3 import MP3 
@@ -11,7 +13,14 @@ completer = WordCompleter(['play', 'exit', 'resume', 'pause', 'stop', 'progress'
 
 session = PromptSession(completer=completer)
 
+def clear():
+    if name == "nt":
+        system('cls')
+    else:
+        system('clear')
+
 pygame.init()
+clear()
 
 class MP3Player:
     def __init__(self,file):
@@ -34,7 +43,7 @@ class MP3Player:
 
 class Terminal:
     def __init__(self) -> None:
-        self.player = MP3Player()
+        self.player = None
         self.playing = False
         self.paused = False 
         self.functions = {
@@ -43,15 +52,12 @@ class Terminal:
             'resume': self.resume,
             'pause': self.pause,
             'stop': self.stop,
-            'progress': self.progress,
+            #'progress': self.progress,
             'clear': self.clear
         }
     
     def clear(self):
-        if name == "nt":
-            system('cls')
-        else:
-            system('clear')
+        clear()
 
     def play(self, filepath):
         if path.isfile(filepath):
@@ -62,6 +68,7 @@ class Terminal:
             self.player.play()
             self.playing = True
             self.paused = False
+            return "Started playing."
         else:
             return "Error: File Not Found."
     
@@ -85,19 +92,34 @@ class Terminal:
         else:
             return "You are not playing anything."
 
+    def resume(self):
+        if self.playing:
+            if self.paused:
+                self.player.unpause()
+                return "Successfully Resumed."
+            else:
+                return "You are already playing."
+        else:
+            return "Nothing is playing right now."
+
     def parse(self, input):
         
         inWords = input.split()
+        if not inWords:
+            return " "
         inWords[0] = inWords[0].lower()
         keywords = ['play', 'exit', 'resume', 'pause', 'stop', 'progress', 'clear']
 
         if inWords[0] in keywords:
             if len(inWords) == 1:
-                try:
-                    result = self.functions[inWords[0]]()
-                    return result
-                except:
-                    return f"Invalid Syntax: {input}"
+                if inWords[0] == 'exit':
+                    sys.exit()
+                else:
+                    try:
+                        result = self.functions[inWords[0]]()
+                        return result
+                    except:
+                        return f"Invalid Syntax: {input}"
             else:
                 try:
                     result = self.functions[inWords[0]](inWords[1])
