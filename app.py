@@ -1,85 +1,126 @@
-import os
-import signal
-import time
-
-import pygame
-from mutagen.mp3 import MP3
-from prompt_toolkit.shortcuts import ProgressBar
+from os import system, name, path
+import sys
+import pygame 
+from mutagen.mp3 import MP3 
+from prompt_toolkit.completion import WordCompleter
 from prompt_toolkit import HTML
 from prompt_toolkit.key_binding import KeyBindings
-from prompt_toolkit.patch_stdout import patch_stdout
-from prompt_toolkit.shortcuts import ProgressBar
-from prompt_toolkit.shortcuts import yes_no_dialog
+from prompt_toolkit import PromptSession
 
+completer = WordCompleter(['play', 'exit', 'resume', 'pause', 'stop', 'progress'], ignore_case=True)
+
+session = PromptSession(completer=completer)
+
+pygame.init()
 
 class MP3Player:
-    def __init__(self, file):
+    def __init__(self,file):
         self.file = file
-
     def play(self):
-        pygame.init()
         pygame.mixer.music.load(self.file)
         pygame.mixer.music.play()
-
     def stop(self):
         pygame.mixer.music.stop()
-
     def unpause(self):
         pygame.mixer.music.unpause()
-
     def pause(self):
         pygame.mixer.music.pause()
-
     def get_music_length(self):
         return round(MP3(self.file).info.length, 2)
-
     def get_pos(self):
         return pygame.mixer.music.get_pos()
-
     def restart(self):
         pygame.mixer.music.rewind()
 
+class Terminal:
+    def __init__(self) -> None:
+        self.player = MP3Player()
+        self.playing = False
+        self.paused = False 
+        self.functions = {
+            'exit': sys.exit,
+            'play': self.play,
+            'resume': self.resume,
+            'pause': self.pause,
+            'stop': self.stop,
+            'progress': self.progress,
+            'clear': self.clear
+        }
+    
+    def clear(self):
+        if name == "nt":
+            system('cls')
+        else:
+            system('clear')
 
-bottom_toolbar = HTML(
-    " <b>[p]</b> play <b>[x]</b> stop  <b>[u]</b> pause <b>[z]</b> unpause"
-)
+    def play(self, filepath):
+        if path.isfile(filepath):
+            if self.playing:
+                self.stop()
+
+            self.player = MP3Player(filepath)
+            self.player.play()
+            self.playing = True
+            self.paused = False
+        else:
+            return "Error: File Not Found."
+    
+    def stop(self):
+        if self.playing:
+            self.player.stop()
+            self.playing = False
+            self.paused = False
+            return "Stopped."
+        else:
+            return "Nothing is playing right now."
+    
+    def pause(self):
+        if self.playing:
+            if self.paused:
+                return "You are already paused."
+            else:
+                self.player.pause()
+                self.paused = True
+                return "Paused the track."
+        else:
+            return "You are not playing anything."
+
+    def parse(self, input):
+        
+        inWords = input.split()
+        inWords[0] = inWords[0].lower()
+        keywords = ['play', 'exit', 'resume', 'pause', 'stop', 'progress', 'clear']
+
+        if inWords[0] in keywords:
+            if len(inWords) == 1:
+                try:
+                    result = self.functions[inWords[0]]()
+                    return result
+                except:
+                    return f"Invalid Syntax: {input}"
+            else:
+                try:
+                    result = self.functions[inWords[0]](inWords[1])
+                    return result
+                except:
+                    return f"Invalid Syntax: {input}"
+            
+        else:
+            return f"Invalid Syntax: {input}"
+
+
+bottom_toolbar = HTML(' <b>[play]</b> play/resume <b>[stop]</b> stop  <b>[pause]</b> pause <b>[exit]</b> exit')
 
 # Create custom key bindings first.
 kb = KeyBindings()
-mp3_player = mp3_player = MP3Player("music/Audio Examples _ SoundHelix.mp3")
+terminal = Terminal()
 
-cancel = False
-
-
-@kb.add("x")
-def _(event):
-    cancel = True
-    mp3_player.stop()
-
-
-@kb.add("u")
-def _(event):
-    mp3_player.pause()
-
-
-@kb.add("z")
-def _(event):
-    mp3_player.unpause()
-
-
-@kb.add("p")
-def _(event):
-    mp3_player.play()
-
-
-title = HTML(
-    'You can hear till 800 sec <style bg="yellow" fg="black"> press keys and enjoy </style>'
-)
-with patch_stdout():
-    with ProgressBar(key_bindings=kb, bottom_toolbar=bottom_toolbar, title=title) as pb:
-        for i in pb(range(800)):
-            time.sleep(1)
-
-            # Stop when the cancel flag has been set.
-            if cancel:
-                break
+while True:
+    try:
+        inp = session.prompt("\n> ")
+        output = terminal.parse(inp)
+        output = [output if output is not None else " "][0]
+        print(output)
+    except:
+        print("\nThanks For Using!")
+        sys.exit()
