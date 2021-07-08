@@ -50,7 +50,7 @@ class MP3Player:
 class Terminal:
     def __init__(self) -> None:
         self.player = None
-        self.help = lambda: 'https://github.com/TheLegendBeacon/pymusic-player/blob/253815c1daf6e8b2eed5751e7fd653df4825ed35/README.md'
+        self.help = lambda: 'https://github.com/TheLegendBeacon/pymusic-player/blob/3f38001e40d00e613f57813cf26c0e022a243432/README.md'
         self.playing = False
         self.paused = False
         self.volume = 1.0 
