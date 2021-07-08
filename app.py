@@ -9,6 +9,8 @@ from prompt_toolkit import HTML
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit import PromptSession
 
+bottom_toolbar = HTML(' <b>[play]</b> play <b>[stop]</b> stop  <b>[pause]</b> pause <b>[exit]</b> exit <b>[resume]</b> resume <b>[clear]</b> clear')
+
 completer = WordCompleter(['play', 'exit', 'resume', 'pause', 'stop', 'progress', 'restart'], ignore_case=True)
 
 session = PromptSession(completer=completer)
@@ -65,6 +67,7 @@ class Terminal:
             if self.playing:
                 self.stop()
 
+            filepath.replace("\\", "/")
             self.player = MP3Player(filepath)
             self.player.play()
             self.playing = True
@@ -97,7 +100,8 @@ class Terminal:
         if self.playing:
             if self.paused:
                 self.player.unpause()
-                return "Successfully Resumed."
+                self.paused = False
+                return "Successfully resumed."
             else:
                 return "You are already playing."
         else:
@@ -116,7 +120,7 @@ class Terminal:
         if not inWords:
             return " "
         inWords[0] = inWords[0].lower()
-        keywords = ['play', 'exit', 'resume', 'pause', 'stop', 'progress', 'clear', 'restart']
+        keywords = ['play', 'exit', 'resume', 'pause', 'stop', 'clear', 'restart']
 
         if inWords[0] in keywords:
             if len(inWords) == 1:
@@ -139,7 +143,6 @@ class Terminal:
             return f"Invalid Syntax: {input}"
 
 
-bottom_toolbar = HTML(' <b>[play]</b> play/resume <b>[stop]</b> stop  <b>[pause]</b> pause <b>[exit]</b> exit')
 
 # Create custom key bindings first.
 kb = KeyBindings()
@@ -147,7 +150,7 @@ terminal = Terminal()
 
 while True:
     try:
-        inp = session.prompt("\n> ")
+        inp = session.prompt("\n❯ ", bottom_toolbar=bottom_toolbar)
         output = terminal.parse(inp)
         output = [output if output is not None else " "][0]
         print(output)
