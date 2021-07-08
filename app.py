@@ -148,9 +148,21 @@ class Terminal:
 kb = KeyBindings()
 terminal = Terminal()
 
+@kb.add('c-u')
+def _(*args):
+    terminal.pause()
+
+@kb.add('c-z')
+def _(*args):
+    terminal.resume()
+
+@kb.add('c-x')
+def _(*args):
+    terminal.stop()
+
 while True:
     try:
-        inp = session.prompt("\n❯ ", bottom_toolbar=bottom_toolbar)
+        inp = session.prompt("\n❯ ", bottom_toolbar=bottom_toolbar, key_bindings=kb)
         output = terminal.parse(inp)
         output = [output if output is not None else " "][0]
         print(output)
