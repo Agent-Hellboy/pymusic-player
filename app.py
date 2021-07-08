@@ -9,7 +9,7 @@ from prompt_toolkit import HTML
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit import PromptSession
 
-completer = WordCompleter(['play', 'exit', 'resume', 'pause', 'stop', 'progress'], ignore_case=True)
+completer = WordCompleter(['play', 'exit', 'resume', 'pause', 'stop', 'progress', 'restart'], ignore_case=True)
 
 session = PromptSession(completer=completer)
 
@@ -52,6 +52,7 @@ class Terminal:
             'resume': self.resume,
             'pause': self.pause,
             'stop': self.stop,
+            'restart': self.restart,
             #'progress': self.progress,
             'clear': self.clear
         }
@@ -102,13 +103,20 @@ class Terminal:
         else:
             return "Nothing is playing right now."
 
+    def restart(self):
+        if self.playing:
+            self.player.restart()
+            return "Restarted the track."
+        else:
+            return "Nothing is playing right now."
+
     def parse(self, input):
         
         inWords = input.split()
         if not inWords:
             return " "
         inWords[0] = inWords[0].lower()
-        keywords = ['play', 'exit', 'resume', 'pause', 'stop', 'progress', 'clear']
+        keywords = ['play', 'exit', 'resume', 'pause', 'stop', 'progress', 'clear', 'restart']
 
         if inWords[0] in keywords:
             if len(inWords) == 1:
