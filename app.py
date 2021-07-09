@@ -1,3 +1,6 @@
+from os import system, name, path, environ
+environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
+
 from mutagen.mp3 import MP3
 import pygame
 from prompt_toolkit import PromptSession
@@ -5,8 +8,7 @@ from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit import HTML
 from prompt_toolkit.completion import WordCompleter
 import sys
-from os import system, name, path, environ
-environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
+
 
 # Auto completer
 completer = WordCompleter(['play',
@@ -122,7 +124,7 @@ class Terminal:
             if self.playing:
                 self.stop()
 
-            filepath.replace("\\", "/")
+            filepath = filepath.replace("\\", "/")
             self.player = MP3Player(filepath)
             self.player.play()
             self.player.set_volume(self.volume)
@@ -196,12 +198,12 @@ class Terminal:
     # Sets the volume of the mp3
     def set_volume(self, volume):
         volume = volume.replace("%", '')
-        if int(float(volume)) > 100:
-            return "You need a value smaller or equal than 100%."
-        else:
+        if int(float(volume)) > 100 and int(float(volume)) > 0:
+            return r"You need a value between 0% and 100%."
+        else: 
             self.volume = int(float(volume)) / 100
             pygame.mixer.music.set_volume(self.volume)
-            return f"Set volume to {100*self.volume}"
+            return f"Set volume to {int(100*self.volume)}%"
 
     # Returns a progress bar
     def progress(self):
@@ -301,8 +303,6 @@ while True:
             bottom_toolbar=HTML(
                 terminal.toolbar_string()),
             key_bindings=kb)
-        while pygame.mixer.music.get_busy(): 
-            pygame.time.Clock().tick(10)
         output = terminal.parse(inp)
         output = [output if output is not None else " "][0]
         print(output)
