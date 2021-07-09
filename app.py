@@ -1,15 +1,40 @@
-import os
-import signal
-import time
-
-import pygame
 from mutagen.mp3 import MP3
-from prompt_toolkit.shortcuts import ProgressBar
-from prompt_toolkit import HTML
+import pygame
+from prompt_toolkit import PromptSession
 from prompt_toolkit.key_binding import KeyBindings
-from prompt_toolkit.patch_stdout import patch_stdout
-from prompt_toolkit.shortcuts import ProgressBar
-from prompt_toolkit.shortcuts import yes_no_dialog
+from prompt_toolkit import HTML
+from prompt_toolkit.completion import WordCompleter
+import sys
+from os import system, name, path, environ
+environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
+
+
+completer = WordCompleter(['play',
+                           'exit',
+                           'resume',
+                           'pause',
+                           'stop',
+                           'clear',
+                           'restart',
+                           'length',
+                           'vol',
+                           'setvol',
+                           'progress',
+                           'status'],
+                          ignore_case=True)
+
+session = PromptSession(completer=completer)
+
+
+def clear():
+    if name == "nt":
+        system('cls')
+    else:
+        system('clear')
+
+
+pygame.init()
+clear()
 
 
 class MP3Player:
@@ -17,7 +42,6 @@ class MP3Player:
         self.file = file
 
     def play(self):
-        pygame.init()
         pygame.mixer.music.load(self.file)
         pygame.mixer.music.play()
 
@@ -31,7 +55,7 @@ class MP3Player:
         pygame.mixer.music.pause()
 
     def get_music_length(self):
-        return round(MP3(self.file).info.length, 2)
+        return round(MP3(self.file).info.length)
 
     def get_pos(self):
         return pygame.mixer.music.get_pos()
@@ -39,47 +63,233 @@ class MP3Player:
     def restart(self):
         pygame.mixer.music.rewind()
 
+    def get_volume(self):
+        return pygame.mixer.music.get_volume()
 
-bottom_toolbar = HTML(
-    " <b>[p]</b> play <b>[x]</b> stop  <b>[u]</b> pause <b>[z]</b> unpause"
-)
+    def set_volume(self, volume):
+        pygame.mixer.music.set_volume(float(volume))
 
-# Create custom key bindings first.
+    def queue(self, file):
+        pygame.mixer.music.queue(file)
+
+
+class Terminal:
+    def __init__(self) -> None:
+        self.player = None
+        self.help = lambda: 'https://github.com/TheLegendBeacon/pymusic-player/blob/3f38001e40d00e613f57813cf26c0e022a243432/README.md'
+        self.playing = False
+        self.paused = False
+        self.volume = 1.0
+        self.functions = {
+            'exit': sys.exit,
+            'play': self.play,
+            'resume': self.resume,
+            'pause': self.pause,
+            'stop': self.stop,
+            'restart': self.restart,
+            'progress': self.progress,
+            'clear': self.clear,
+            'length': self.length,
+            'vol': self.vol,
+            'setvol': self.set_volume,
+            'status': self.status,
+            'help': self.help
+        }
+
+    def clear(self):
+        clear()
+
+    def status(self):
+        if self.playing:
+            return f"Playing: {self.player.file}, Paused: {self.paused}\n{self.progress()}"
+        else:
+            return "Not playing anything."
+
+    def toolbar_string(self):
+        return f'''<b>[play]</b> play <b>[stop]</b> stop  <b>[pause]</b> pause <b>[exit]</b> exit <b>[resume]</b> resume <b>[clear]</b> clear <b>|</b> volume: {int(self.volume*100)}%'''
+
+    def play(self, filepath):
+        if path.isfile(filepath):
+            if self.playing:
+                self.stop()
+
+            filepath.replace("\\", "/")
+            self.player = MP3Player(filepath)
+            self.player.play()
+            self.player.set_volume(self.volume)
+            self.playing = True
+            self.paused = False
+            return "Started playing."
+        else:
+            return "Error: File Not Found."
+
+    def stop(self):
+        if self.playing:
+            self.player.stop()
+            self.playing = False
+            self.paused = False
+            return "Stopped."
+        else:
+            return "Nothing is playing right now."
+
+    def pause(self):
+        if self.playing:
+            if self.paused:
+                return "You are already paused."
+            else:
+                self.player.pause()
+                self.paused = True
+                return "Paused the track."
+        else:
+            return "You are not playing anything."
+
+    def resume(self):
+        if self.playing:
+            if self.paused:
+                self.player.unpause()
+                self.paused = False
+                return "Successfully resumed."
+            else:
+                return "You are already playing."
+        else:
+            return "Nothing is playing right now."
+
+    def restart(self):
+        if self.playing:
+            self.player.restart()
+            return "Restarted the track."
+        else:
+            return "Nothing is playing right now."
+
+    def length(self):
+        if self.playing:
+            seclength = self.player.get_music_length()
+            minlength, seclength = seclength // 60, seclength % 60
+            hourlength, minlength = minlength // 60, minlength % 60
+
+            if hourlength == 0:
+                return f"{minlength} minutes and {seclength} seconds"
+            else:
+                return f"{hourlength} hours, {minlength} minutes and {seclength} seconds"
+        else:
+            return "Nothing is playing right now."
+
+    def vol(self):
+        return f"{str(int(self.volume*100))}%"
+
+    def set_volume(self, volume):
+        volume = volume.replace("%", '')
+        if int(float(volume)) > 100:
+            return "You need a value smaller or equal than 100%."
+        else:
+            self.volume = int(float(volume)) / 100
+            pygame.mixer.music.set_volume(self.volume)
+            return f"Set volume to {100*self.volume}"
+
+    def progress(self):
+        if self.playing:
+            progressBar = ['-' for x in range(50)]
+            length = self.player.get_music_length()
+            pos = self.player.get_pos() // 1000
+            ratio = round(pos / length * 50)
+            for x in range(ratio):
+                progressBar[x] = "█"
+            return f"\n|{''.join(progressBar)}| {pos}/{length} seconds, {length-pos} sec ETA\n"
+        else:
+            return "You are not playing anything."
+
+    def parse(self, inp):
+
+        inWords = inp.split()
+        if not inWords:
+            return " "
+        commas = [inWords.index(x) for x in [x for x in inWords if '"' in x]]
+        if len(inWords) > 2:
+            inWords = [inWords[0], " ".join(
+                [inWords[x] for x in range(commas[0], commas[1] + 1)])]
+
+        inWords[0] = inWords[0].lower()
+        keywords = [
+            'play',
+            'exit',
+            'resume',
+            'pause',
+            'stop',
+            'clear',
+            'restart',
+            'length',
+            'vol',
+            'setvol',
+            'progress',
+            'status',
+            'help']
+
+        if inWords[0] in keywords:
+            if len(inWords) == 1:
+                if inWords[0] == 'exit':
+                    sys.exit()
+                else:
+                    try:
+                        result = self.functions[inWords[0]]()
+                        return result
+                    except BaseException:
+                        return f"Invalid Syntax: {inp}"
+            else:
+                try:
+                    result = self.functions[inWords[0]](inWords[1])
+                    return result
+                except BaseException:
+                    return f"Invalid Syntax: {inp}"
+
+        else:
+            return f"Invalid Syntax: {inp}: Not a valid keyword."
+
+
 kb = KeyBindings()
-mp3_player = mp3_player = MP3Player("music/Audio Examples _ SoundHelix.mp3")
-
-cancel = False
+terminal = Terminal()
 
 
-@kb.add("x")
-def _(event):
-    cancel = True
-    mp3_player.stop()
+@kb.add('c-u')
+def _(*args):
+    if terminal.paused:
+        terminal.resume()
+    else:
+        terminal.pause()
 
 
-@kb.add("u")
-def _(event):
-    mp3_player.pause()
+@kb.add('c-x')
+def _(*args):
+    terminal.stop()
 
 
-@kb.add("z")
-def _(event):
-    mp3_player.unpause()
+@kb.add('c-r')
+def _(*args):
+    terminal.restart()
 
 
-@kb.add("p")
-def _(event):
-    mp3_player.play()
+@kb.add('c-up')
+def _(*args):
+    terminal.set_volume(str(terminal.volume * 100 + 10))
 
 
-title = HTML(
-    'You can hear till 800 sec <style bg="yellow" fg="black"> press keys and enjoy </style>'
-)
-with patch_stdout():
-    with ProgressBar(key_bindings=kb, bottom_toolbar=bottom_toolbar, title=title) as pb:
-        for i in pb(range(800)):
-            time.sleep(1)
+@kb.add('c-down')
+def _(*args):
+    terminal.set_volume(str(terminal.volume * 100 - 10))
 
-            # Stop when the cancel flag has been set.
-            if cancel:
-                break
+
+while True:
+    try:
+        inp = session.prompt(
+            "\n❯ ",
+            bottom_toolbar=HTML(
+                terminal.toolbar_string()),
+            key_bindings=kb)
+        output = terminal.parse(inp)
+        output = [output if output is not None else " "][0]
+        print(output)
+    except (KeyboardInterrupt, EOFError):
+        print("\nThanks For Using!")
+        sys.exit()
+    except BaseException:
+        print("There was an error.")
+        sys.exit()
