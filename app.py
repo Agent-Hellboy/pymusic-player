@@ -34,6 +34,8 @@ def clear():
         system('clear')
 
 # Start Pygame
+pygame.mixer.pre_init(44100, -16, 2, 512)
+pygame.mixer.init()
 pygame.init()
 clear()
 
@@ -301,6 +303,8 @@ while True:
             bottom_toolbar=HTML(
                 terminal.toolbar_string()),
             key_bindings=kb)
+        while pygame.mixer.music.get_busy(): 
+            pygame.time.Clock().tick(10)
         output = terminal.parse(inp)
         output = [output if output is not None else " "][0]
         print(output)
