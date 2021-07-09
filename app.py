@@ -1,3 +1,6 @@
+from os import system, name, path, environ
+environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
+
 from mutagen.mp3 import MP3
 import pygame
 from prompt_toolkit import PromptSession
@@ -5,10 +8,9 @@ from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit import HTML
 from prompt_toolkit.completion import WordCompleter
 import sys
-from os import system, name, path, environ
-environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 
 
+# Auto completer
 completer = WordCompleter(['play',
                            'exit',
                            'resume',
@@ -23,20 +25,23 @@ completer = WordCompleter(['play',
                            'status'],
                           ignore_case=True)
 
+# Input session
 session = PromptSession(completer=completer)
 
-
+# Clearing the terminal window depending on platform
 def clear():
     if name == "nt":
         system('cls')
     else:
         system('clear')
 
-
+# Start Pygame
+pygame.mixer.pre_init(44100, -16, 2, 512)
+pygame.mixer.init()
 pygame.init()
 clear()
 
-
+# Class for mp3 files using pygame.mixer.music
 class MP3Player:
     def __init__(self, file):
         self.file = file
@@ -72,14 +77,17 @@ class MP3Player:
     def queue(self, file):
         pygame.mixer.music.queue(file)
 
-
+# Class for parsing and executing user input
 class Terminal:
     def __init__(self) -> None:
+        # MP3 Player
         self.player = None
         self.help = lambda: 'https://github.com/TheLegendBeacon/pymusic-player/blob/3f38001e40d00e613f57813cf26c0e022a243432/README.md'
         self.playing = False
         self.paused = False
         self.volume = 1.0
+
+        # All functions required for operation
         self.functions = {
             'exit': sys.exit,
             'play': self.play,
@@ -99,21 +107,24 @@ class Terminal:
     def clear(self):
         clear()
 
+    # Status function - Shows essential info
     def status(self):
         if self.playing:
             return f"Playing: {self.player.file}, Paused: {self.paused}\n{self.progress()}"
         else:
             return "Not playing anything."
 
+    # Toolbar
     def toolbar_string(self):
         return f'''<b>[play]</b> play <b>[stop]</b> stop  <b>[pause]</b> pause <b>[exit]</b> exit <b>[resume]</b> resume <b>[clear]</b> clear <b>|</b> volume: {int(self.volume*100)}%'''
 
+    # Starts playing the mp3
     def play(self, filepath):
         if path.isfile(filepath):
             if self.playing:
                 self.stop()
 
-            filepath.replace("\\", "/")
+            filepath = filepath.replace("\\", "/")
             self.player = MP3Player(filepath)
             self.player.play()
             self.player.set_volume(self.volume)
@@ -123,6 +134,8 @@ class Terminal:
         else:
             return "Error: File Not Found."
 
+
+    # Stops playing the mp3
     def stop(self):
         if self.playing:
             self.player.stop()
@@ -132,6 +145,7 @@ class Terminal:
         else:
             return "Nothing is playing right now."
 
+    # Pause the mp3
     def pause(self):
         if self.playing:
             if self.paused:
@@ -143,6 +157,7 @@ class Terminal:
         else:
             return "You are not playing anything."
 
+    # Resumes playing the mp3
     def resume(self):
         if self.playing:
             if self.paused:
@@ -154,6 +169,7 @@ class Terminal:
         else:
             return "Nothing is playing right now."
 
+    # Restarts playing the mp3 from the beginning
     def restart(self):
         if self.playing:
             self.player.restart()
@@ -161,6 +177,7 @@ class Terminal:
         else:
             return "Nothing is playing right now."
 
+    # returns the length of the mp3
     def length(self):
         if self.playing:
             seclength = self.player.get_music_length()
@@ -174,18 +191,21 @@ class Terminal:
         else:
             return "Nothing is playing right now."
 
+    # returns the volume of the mp3
     def vol(self):
         return f"{str(int(self.volume*100))}%"
 
+    # Sets the volume of the mp3
     def set_volume(self, volume):
         volume = volume.replace("%", '')
-        if int(float(volume)) > 100:
-            return "You need a value smaller or equal than 100%."
-        else:
+        if int(float(volume)) > 100 and int(float(volume)) > 0:
+            return r"You need a value between 0% and 100%."
+        else: 
             self.volume = int(float(volume)) / 100
             pygame.mixer.music.set_volume(self.volume)
-            return f"Set volume to {100*self.volume}"
+            return f"Set volume to {int(100*self.volume)}%"
 
+    # Returns a progress bar
     def progress(self):
         if self.playing:
             progressBar = ['-' for x in range(50)]
@@ -198,6 +218,7 @@ class Terminal:
         else:
             return "You are not playing anything."
 
+    # Parses user input and runs it
     def parse(self, inp):
 
         inWords = inp.split()
@@ -246,7 +267,7 @@ class Terminal:
 kb = KeyBindings()
 terminal = Terminal()
 
-
+# Short Cuts
 @kb.add('c-u')
 def _(*args):
     if terminal.paused:
@@ -274,7 +295,7 @@ def _(*args):
 def _(*args):
     terminal.set_volume(str(terminal.volume * 100 - 10))
 
-
+# Main function
 while True:
     try:
         inp = session.prompt(
