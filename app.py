@@ -203,10 +203,8 @@ class Terminal:
         inWords = inp.split()
         if not inWords:
             return " "
-        commas = [inWords.index(x) for x in [x for x in inWords if '"' in x]]
         if len(inWords) > 2:
-            inWords = [inWords[0], " ".join(
-                [inWords[x] for x in range(commas[0], commas[1] + 1)])]
+            inWords = [inWords[0], " ".join(inWords[1:])]
 
         inWords[0] = inWords[0].lower()
         keywords = [
